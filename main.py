@@ -11,6 +11,24 @@ import threading
 import time
 from datetime import datetime
 import queue
+import argparse
+
+# Voice ID mapping
+VOICE_MAP = {
+    'therapist': 'JBFqnCBsd6RMkjVDRZzb',  # Warm, empathetic voice
+    'calm': '21m00Tcm4TlvDq8ikWAM',       # Soothing, gentle voice
+    'professional': 'EXAVITQu4vr4xnSDxMaL' # Clear, authoritative voice
+}
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(description='AI Therapist with configurable model and voice')
+parser.add_argument('--model', choices=['gpt-4.1', 'gpt-4.1-nano', 'gpt-4.1-mini'], 
+                    default='gpt-4.1-nano',
+                    help='Select GPT model (default: gpt-4.1-nano)')
+parser.add_argument('--voice', choices=list(VOICE_MAP.keys()),
+                    default='therapist',
+                    help='Select voice style: therapist (warm), calm (soothing), or professional (authoritative)')
+args = parser.parse_args()
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,10 +37,14 @@ load_dotenv()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
+# Chat history to maintain conversation context
+chat_history = [
+    {"role": "system", "content": "You are a compassionate and empathetic AI therapist. Respond naturally and conversationally, showing understanding and care. Your response will be spoken and not read, so make sure it sounds conversational."}
+]
+
 # Audio configuration
 SAMPLE_RATE = 16000
 CHANNELS = 1
-CHUNK_SIZE = 1024
 MIN_RECORD_SECONDS = 1
 
 # Create recordings directory if it doesn't exist
@@ -102,6 +124,9 @@ def generate_and_play_response(text):
     """Generate response from LLM and play audio in real-time."""
     print("Generating response...")
     
+    # Add user's message to chat history
+    chat_history.append({"role": "user", "content": text})
+    
     # Queue to store text chunks for TTS
     text_queue = queue.Queue()
     current_text = ""
@@ -117,7 +142,7 @@ def generate_and_play_response(text):
             try:
                 audio = elevenlabs_client.text_to_speech.convert(
                     text=text_chunk,
-                    voice_id="JBFqnCBsd6RMkjVDRZzb",
+                    voice_id=VOICE_MAP[args.voice],
                     model_id="eleven_multilingual_v2",
                     output_format="mp3_44100_128"
                 )
@@ -131,11 +156,8 @@ def generate_and_play_response(text):
     try:
         # Stream the response from the LLM
         stream = openai_client.chat.completions.create(
-            model="gpt-4.1-nano",
-            messages=[
-                {"role": "system", "content": "You are a compassionate and empathetic AI therapist. Respond naturally and conversationally, showing understanding and care. Your response will be spoken and not read, so make sure it sounds conversational."},
-                {"role": "user", "content": text}
-            ],
+            model=args.model,
+            messages=chat_history,
             stream=True
         )
         
@@ -172,6 +194,9 @@ def generate_and_play_response(text):
         if current_text.strip():
             text_queue.put(current_text)
         
+        # Add AI's complete response to chat history
+        chat_history.append({"role": "assistant", "content": current_text})
+        
     except Exception as e:
         print(f"Error in LLM: {e}")
     finally:
@@ -182,6 +207,8 @@ def generate_and_play_response(text):
 
 def main():
     print("Welcome to Tage AI Therapist.")
+    print(f"Using model: {args.model}")
+    print(f"Using voice: {args.voice}")
     print(f"Press Enter to start recording (minimum {MIN_RECORD_SECONDS} seconds).")
     print("Press Enter again to stop recording when you're done speaking.")
     print(f"Recordings will be saved in the '{RECORDINGS_DIR}' directory.")
@@ -194,11 +221,17 @@ def main():
         if last_recording:
             print("2. Replay last recording")
         print("3. Exit")
+        print("4. Clear conversation history")
         
-        choice = input("\nEnter your choice (1-3): ").strip()
+        choice = input("\nEnter your choice (1-4): ").strip()
         
         if choice == "3":
             break
+        elif choice == "4":
+            # Reset chat history while keeping the system message
+            chat_history = [chat_history[0]]
+            print("Conversation history cleared.")
+            continue
         elif choice == "2" and last_recording:
             print(f"\nPlaying last recording: {last_recording}")
             play_audio_file(last_recording)
