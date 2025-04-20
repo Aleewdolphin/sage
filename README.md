@@ -32,7 +32,7 @@ python main.py
 
 - **Audio Input/Output**: Using `sounddevice` for low-latency audio capture and playback
 - **Speech-to-Text**: OpenAI Whisper for high accuracy transcription
-- **LLM**: GPT-4 for natural, context-aware responses
+- **LLM**: GPT-4.1 for natural, context-aware responses
 - **Text-to-Speech**: ElevenLabs for natural, emotionally-aware voice synthesis
 
 ## Notes
