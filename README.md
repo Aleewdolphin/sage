@@ -24,7 +24,7 @@ python main.py
 
 - Real-time audio capture from microphone
 - High-quality speech-to-text using OpenAI Whisper
-- Natural conversation using GPT-4
+- Natural conversation using GPT-4.1
 - Human-like voice synthesis using ElevenLabs
 - Low-latency audio playback
 
