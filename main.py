@@ -15,7 +15,7 @@ import queue
 # Load environment variables from .env file
 load_dotenv()
 
-# Initialize API clients
+# Initialize API client
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 
